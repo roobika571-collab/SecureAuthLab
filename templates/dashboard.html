@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+
+{% block title %}SOC Dashboard - SecureAuth Lab{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Top Hero Banner -->
+    <div class="dashboard-hero glass-panel">
+        <div class="hero-left">
+            <div class="user-avatar-badge" aria-hidden="true">
+                {{ user.name[:2].upper() }}
+            </div>
+            <div class="hero-titles">
+                <div class="session-badge">
+                    <span class="pulse-indicator"></span>
+                    <span>AUTHENTICATED SESSION ACTIVE</span>
+                </div>
+                <h1 class="hero-greeting">Welcome, <span class="highlight-text">{{ user.name }}</span></h1>
+                <p class="hero-meta">Access level: Security Operator • Encrypted session running on SQLite & Argon2id</p>
+            </div>
+        </div>
+        <div class="hero-actions">
+            <form method="POST" action="{{ url_for('logout') }}" id="logoutForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-outline-danger" id="logoutBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    <span>Secure Terminate / Logout</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Grid: Session Monitor & User Profile -->
+    <div class="dashboard-grid">
+        <!-- Live Session Inactivity Expiry Card -->
+        <div class="dash-card glass-panel session-card">
+            <div class="card-header">
+                <div class="card-icon-wrap icon-cyan">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="card-title">Session Inactivity Expiry</h2>
+                    <p class="card-subtitle">Server-enforced timeout: {{ session_timeout_min }} minutes</p>
+                </div>
+            </div>
+
+            <div class="session-timer-body">
+                <div class="countdown-display">
+                    <span class="timer-digits" id="sessionTimerDisplay">--:--</span>
+                    <span class="timer-sub">Remaining before automatic logout</span>
+                </div>
+                <div class="timer-progress-track">
+                    <div class="timer-progress-fill" id="sessionProgressFill" style="width: 100%;"></div>
+                </div>
+                <div class="session-details-list">
+                    <div class="session-detail-row">
+                        <span class="detail-label">Inactivity Trigger:</span>
+                        <span class="detail-value text-accent">{{ session_timeout_min }}m of inactivity</span>
+                    </div>
+                    <div class="session-detail-row">
+                        <span class="detail-label">Session Fixation Guard:</span>
+                        <span class="detail-value text-success">Regenerated on login</span>
+                    </div>
+                    <div class="session-detail-row">
+                        <span class="detail-label">Cookie Protection:</span>
+                        <span class="detail-value text-success">HttpOnly + SameSite=Lax</span>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-secondary btn-block" id="refreshSessionBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+                    </svg>
+                    <span>Keep Session Active (Heartbeat)</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- User Profile Card -->
+        <div class="dash-card glass-panel profile-card">
+            <div class="card-header">
+                <div class="card-icon-wrap icon-violet">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="card-title">User Profile Data</h2>
+                    <p class="card-subtitle">Retrieved via safe parameterized query</p>
+                </div>
+            </div>
+
+            <div class="profile-info-list">
+                <div class="info-row">
+                    <span class="info-title">Account Holder</span>
+                    <span class="info-data">{{ user.name }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-title">Normalized Email</span>
+                    <span class="info-data font-mono">{{ user.email }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-title">User ID (Database PK)</span>
+                    <span class="info-data font-mono">UID-{{ '%04d' % user.id }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-title">Registration Timestamp</span>
+                    <span class="info-data">{{ user.created_at or 'Verified' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-title">Last Authentication</span>
+                    <span class="info-data">{{ user.last_login or 'First Session' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-title">Password Hash Visibility</span>
+                    <span class="info-data text-shielded font-mono">
+                        [PROTECTED - Argon2id Never Disclosed]
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security Defensive Measures Grid (Task-2 Requirements) -->
+    <div class="security-features-section glass-panel">
+        <div class="section-header-row">
+            <div>
+                <h2 class="section-title">Backend Security Health Monitor</h2>
+                <p class="section-subtitle">Real-time status of all Cyber Security Task-2 controls in this deployment</p>
+            </div>
+            <a href="{{ url_for('security_info') }}" class="btn btn-outline-primary">
+                View Full Specifications →
+            </a>
+        </div>
+
+        <div class="security-cards-grid">
+            <!-- 1. Password Hashing -->
+            <div class="sec-feature-box">
+                <div class="sec-box-header">
+                    <span class="sec-pill pill-active">ACTIVE</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                </div>
+                <h3 class="sec-box-name">Argon2id Password Hashing</h3>
+                <p class="sec-box-desc">Passlib/argon2-cffi configured with 64 MiB RAM requirement, 2 iterations. Zero plaintext passwords ever stored or logged.</p>
+                <div class="sec-box-meta">Standard: RFC 9106 / OWASP Recommended</div>
+            </div>
+
+            <!-- 2. Rate Limiting -->
+            <div class="sec-feature-box">
+                <div class="sec-box-header">
+                    <span class="sec-pill pill-active">ACTIVE</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+                </div>
+                <h3 class="sec-box-name">Login Rate Limiter</h3>
+                <p class="sec-box-desc">Flask-Limiter restricts login attempts to {{ security_info.rate_limits.login }}. Prevents automated password spraying and brute-force.</p>
+                <div class="sec-box-meta">Policy: 5 attempts/min with 429 response</div>
+            </div>
+
+            <!-- 3. Cookie Flags -->
+            <div class="sec-feature-box">
+                <div class="sec-box-header">
+                    <span class="sec-pill pill-active">ACTIVE</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                </div>
+                <h3 class="sec-box-name">HttpOnly & SameSite Cookies</h3>
+                <p class="sec-box-desc">Session cookies have HttpOnly flag set (blocks XSS theft) and SameSite=Lax (mitigates CSRF). Secure flag ready for HTTPS.</p>
+                <div class="sec-box-meta">Flags: HttpOnly=True | SameSite=Lax</div>
+            </div>
+
+            <!-- 4. Session Expiry & Fixation -->
+            <div class="sec-feature-box">
+                <div class="sec-box-header">
+                    <span class="sec-pill pill-active">ACTIVE</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>
+                </div>
+                <h3 class="sec-box-name">Server-Side Inactivity Expiry</h3>
+                <p class="sec-box-desc">Server enforces strict inactivity window. Session identifiers are refreshed upon login to eliminate Session Fixation.</p>
+                <div class="sec-box-meta">Timeout: {{ session_timeout_min }}m inactivity window</div>
+            </div>
+
+            <!-- 5. Timing Attack Defense -->
+            <div class="sec-feature-box">
+                <div class="sec-box-header">
+                    <span class="sec-pill pill-active">ACTIVE</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                </div>
+                <h3 class="sec-box-name">Constant-Time Dummy Verification</h3>
+                <p class="sec-box-desc">Non-existent email logins still compute Argon2id on dummy data, matching CPU duration and preventing email enumeration.</p>
+                <div class="sec-box-meta">Error: Generic "Invalid email or password"</div>
+            </div>
+
+            <!-- 6. Anti-Caching Headers -->
+            <div class="sec-feature-box">
+                <div class="sec-box-header">
+                    <span class="sec-pill pill-active">ACTIVE</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+                </div>
+                <h3 class="sec-box-name">Defensive Cache Control</h3>
+                <p class="sec-box-desc">All protected views send Cache-Control: no-store, no-cache headers. Prevents back-button access to cached pages after logout.</p>
+                <div class="sec-box-meta">Headers: no-store, no-cache, must-revalidate</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security Audit Logs Table -->
+    <div class="dash-card glass-panel audit-card">
+        <div class="card-header">
+            <div class="card-icon-wrap icon-emerald">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                </svg>
+            </div>
+            <div>
+                <h2 class="card-title">Recent Security Audit Trail</h2>
+                <p class="card-subtitle">Chronological record of authentication events for this account</p>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="audit-table">
+                <thead>
+                    <tr>
+                        <th>Event Type</th>
+                        <th>IP Address</th>
+                        <th>Audit Details</th>
+                        <th>Timestamp (UTC)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if logs %}
+                        {% for log in logs %}
+                            <tr>
+                                <td>
+                                    <span class="event-tag tag-{{ log.event_type.lower() }}">
+                                        {{ log.event_type }}
+                                    </span>
+                                </td>
+                                <td class="font-mono text-muted">{{ log.ip_address }}</td>
+                                <td>{{ log.details or '-' }}</td>
+                                <td class="font-mono text-muted">{{ log.created_at }}</td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="4" class="empty-table-msg">No audit records found yet for this account.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Inactivity Warning Modal -->
+<div class="modal-backdrop hidden" id="expiryWarningModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-panel glass-panel">
+        <div class="modal-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+        </div>
+        <h3 class="modal-title" id="modalTitle">Session Expiring Soon!</h3>
+        <p class="modal-desc">
+            Your session has been inactive and will expire in <strong id="modalSecondsRemaining">60</strong> seconds for cybersecurity safety.
+        </p>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-primary" id="extendSessionBtn">Keep My Session Active</button>
+            <a href="{{ url_for('logout') }}" class="btn btn-outline-danger">Log Out Now</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize session countdown on dashboard
+    document.addEventListener('DOMContentLoaded', function() {
+        const initialRemainingSeconds = {{ time_remaining_sec }};
+        const totalTimeoutSeconds = {{ session_timeout_min * 60 }};
+        if (window.SecureAuth && window.SecureAuth.initDashboardTimer) {
+            window.SecureAuth.initDashboardTimer(initialRemainingSeconds, totalTimeoutSeconds);
+        }
+    });
+</script>
+{% endblock %}

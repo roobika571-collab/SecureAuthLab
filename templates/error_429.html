@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}429 Too Many Requests - SecureAuth Lab{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-card glass-panel" style="text-align: center;">
+        <div class="error-badge-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+        </div>
+        <div class="security-chip chip-amber" style="margin: 0 auto 1rem auto;">
+            <span class="chip-dot"></span>
+            <span class="chip-text">HTTP 429 DEFENSIVE TRIGGER</span>
+        </div>
+        <h1 class="auth-title">Rate Limit Exceeded</h1>
+        <p class="auth-subtitle">
+            Our defensive rate limiter has intercepted repeated requests from your IP address to prevent brute-force attacks.
+        </p>
+
+        <div class="callout-box" style="text-align: left; margin: 1.5rem 0;">
+            <p><strong>Security Policy:</strong> {{ limit_policy }}</p>
+            <p><strong>System Message:</strong> {{ description or "Too many requests. Please slow down and try again shortly." }}</p>
+        </div>
+
+        <div style="display: flex; gap: 1rem; justify-content: center;">
+            <a href="{{ url_for('login') }}" class="btn btn-primary">Return to Login</a>
+            <a href="{{ url_for('security_info') }}" class="btn btn-secondary">Review Security Specs</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

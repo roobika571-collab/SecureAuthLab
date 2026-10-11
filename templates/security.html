@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Security Specifications & Architecture - SecureAuth Lab{% endblock %}
+
+{% block content %}
+<div class="security-page-container">
+    <div class="security-hero glass-panel">
+        <div class="security-chip chip-cyan">
+            <span class="chip-dot"></span>
+            <span class="chip-text">DEFENSIVE ENGINEERING</span>
+        </div>
+        <h1 class="security-hero-title">Cyber Security Implementation Specifications</h1>
+        <p class="security-hero-subtitle">
+            An in-depth breakdown of the cryptographic primitives, server-side controls, and session defenses engineered into <strong>SecureAuth Lab</strong> for Task-2.
+        </p>
+    </div>
+
+    <!-- Security Matrix Cards -->
+    <div class="specs-grid">
+        <!-- 1. Password Storage -->
+        <section class="spec-card glass-panel" id="password-storage">
+            <div class="spec-card-header">
+                <div class="spec-icon-wrap icon-cyan">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                </div>
+                <div>
+                    <span class="badge badge-verified">IMPLEMENTED & VERIFIED</span>
+                    <h2 class="spec-title">1. Password Storage: Argon2id (RFC 9106)</h2>
+                </div>
+            </div>
+            <div class="spec-body">
+                <p>
+                    Passwords are never stored or logged in plaintext. We utilize <strong>Argon2id</strong> (winner of the Password Hashing Competition, recommended by OWASP). Argon2id is hybrid data-dependent and data-independent, resisting both side-channel attacks and GPU/ASIC parallel brute-force attacks.
+                </p>
+                <div class="code-preview">
+                    <code>
+                        hasher = PasswordHasher(time_cost=2, memory_cost=65536, parallelism=1, hash_len=32, type=Type.ID)<br>
+                        stored_hash = hasher.hash(raw_password)
+                    </code>
+                </div>
+                <div class="spec-checklist">
+                    <div class="spec-check-item">✔ Memory hardness: 64 MiB required per hash verification.</div>
+                    <div class="spec-check-item">✔ Password hashes are never sent back in API responses or HTML templates.</div>
+                    <div class="spec-check-item">✔ Passwords are verified via <code>hasher.verify()</code> with exception handling.</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. Timing Attack & Enumeration -->
+        <section class="spec-card glass-panel" id="generic-errors">
+            <div class="spec-card-header">
+                <div class="spec-icon-wrap icon-violet">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+                </div>
+                <div>
+                    <span class="badge badge-verified">IMPLEMENTED & VERIFIED</span>
+                    <h2 class="spec-title">2. Generic Auth Errors & Timing Attack Mitigation</h2>
+                </div>
+            </div>
+            <div class="spec-body">
+                <p>
+                    When login fails, the response displays a strictly generic message: <strong>"Invalid email or password."</strong> This prevents account enumeration (identifying whether a victim's email exists on the platform).
+                </p>
+                <p>
+                    Additionally, to defeat <em>timing side-channel attacks</em>, if an entered email does not exist in the database, the server runs <code>verify_dummy_password()</code> against a pre-computed dummy Argon2id hash. This ensures CPU execution duration is statistically indistinguishable between existent and non-existent accounts.
+                </p>
+                <div class="code-preview">
+                    <code>
+                        if user:<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;authenticated = verify_password(user['password_hash'], password)<br>
+                        else:<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;verify_dummy_password(password) # Mitigates timing disparity
+                    </code>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. Server-Side Input Validation -->
+        <section class="spec-card glass-panel" id="input-validation">
+            <div class="spec-card-header">
+                <div class="spec-icon-wrap icon-emerald">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                </div>
+                <div>
+                    <span class="badge badge-verified">IMPLEMENTED & VERIFIED</span>
+                    <h2 class="spec-title">3. Input Validation & Parameterized Queries</h2>
+                </div>
+            </div>
+            <div class="spec-body">
+                <p>
+                    While the client-side JavaScript provides visual guidance for user convenience, all security validation is enforced <strong>authoritatively on the server</strong> in <code>auth_service.py</code>:
+                </p>
+                <ul>
+                    <li><strong>Email Normalization:</strong> Stripped of leading/trailing spaces and lowercased to prevent duplicate accounts via capitalization variance.</li>
+                    <li><strong>Length & Regex Guards:</strong> Names restricted to 2-60 letters/spaces; emails verified against RFC-compliant pattern; passwords strictly capped at 128 characters to prevent denial-of-service hash exhaustion.</li>
+                    <li><strong>SQL Injection Defense (CWE-89):</strong> 100% of SQLite operations use parameterized placeholders (<code>?</code>), never string interpolation.</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- 4. Rate Limiting -->
+        <section class="spec-card glass-panel" id="rate-limiting">
+            <div class="spec-card-header">
+                <div class="spec-icon-wrap icon-amber">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path></svg>
+                </div>
+                <div>
+                    <span class="badge badge-verified">IMPLEMENTED & VERIFIED</span>
+                    <h2 class="spec-title">4. Rate Limiting (Flask-Limiter)</h2>
+                </div>
+            </div>
+            <div class="spec-body">
+                <p>
+                    Sensitive endpoints are protected against credential stuffing and brute-force attacks via <code>Flask-Limiter</code>:
+                </p>
+                <div class="spec-checklist">
+                    <div class="spec-check-item">✔ <code>/login</code>: 5 requests per minute per IP address.</div>
+                    <div class="spec-check-item">✔ <code>/register</code>: 3 requests per minute per IP address.</div>
+                    <div class="spec-check-item">✔ Global threshold: 120 requests per hour.</div>
+                </div>
+                <div class="callout-box">
+                    <strong>Enterprise Architecture Note:</strong> For local development and single-process demonstrations, the in-memory backend (<code>memory://</code>) is used. In production deployments with multiple WSGI workers (e.g., Gunicorn or uWSGI), rate limiting MUST connect to a distributed shared storage backend such as <code>redis://</code> or <code>memcached://</code> so limits are shared across workers.
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. Session Management & Cookies -->
+        <section class="spec-card glass-panel" id="session-security">
+            <div class="spec-card-header">
+                <div class="spec-icon-wrap icon-violet">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                </div>
+                <div>
+                    <span class="badge badge-verified">IMPLEMENTED & VERIFIED</span>
+                    <h2 class="spec-title">5. Session Management & Cookie Attributes</h2>
+                </div>
+            </div>
+            <div class="spec-body">
+                <p>
+                    Session cookies are hardened against modern web attacks:
+                </p>
+                <ul>
+                    <li><strong>HttpOnly = True:</strong> JavaScript cannot access <code>document.cookie</code>, preventing session hijacking via Cross-Site Scripting (XSS).</li>
+                    <li><strong>SameSite = 'Lax':</strong> Protects against Cross-Site Request Forgery (CSRF) in cross-origin navigations.</li>
+                    <li><strong>Secure = Configurable:</strong> Enabled automatically in HTTPS production; safely toggleable via <code>SESSION_COOKIE_SECURE=False</code> for local HTTP testing.</li>
+                    <li><strong>Anti-Session Fixation (CWE-384):</strong> Whenever a user logs in, <code>session.clear()</code> is executed before establishing new authentication variables, discarding any pre-existing session ID.</li>
+                    <li><strong>No Credential LocalStorage:</strong> Passwords, tokens, and sensitive state are NEVER stored in browser localStorage.</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- 6. Session Inactivity Expiry & Logout -->
+        <section class="spec-card glass-panel" id="inactivity-expiry">
+            <div class="spec-card-header">
+                <div class="spec-icon-wrap icon-rose">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+                </div>
+                <div>
+                    <span class="badge badge-verified">IMPLEMENTED & VERIFIED</span>
+                    <h2 class="spec-title">6. Server-Side Inactivity Expiry & Secure Logout</h2>
+                </div>
+            </div>
+            <div class="spec-body">
+                <p>
+                    Sessions are bounded by server-side inactivity validation on every request (default: 20 minutes). If a user remains idle past this window, the backend terminates the session and redirects to <code>/login</code>.
+                </p>
+                <p>
+                    <strong>Secure Logout:</strong> The <code>/logout</code> endpoint clears server-side session variables, sets cookie expiry to 0, and records the event in the audit log.
+                </p>
+                <p>
+                    <strong>Anti-Caching Defense:</strong> Responses for protected views inject <code>Cache-Control: no-store, no-cache, must-revalidate, max-age=0</code> and <code>Pragma: no-cache</code> headers, preventing unauthorized viewing of cached pages via browser Back button after logout.
+                </p>
+            </div>
+        </section>
+    </div>
+
+    <!-- Verification Guide Section -->
+    <div class="testing-guide-panel glass-panel">
+        <h2 class="guide-title">How Evaluators Can Test These Controls</h2>
+        <div class="guide-steps-grid">
+            <div class="guide-step">
+                <span class="step-num">01</span>
+                <h3>Test Rate Limiting</h3>
+                <p>Submit 6 invalid login attempts within 60 seconds. On the 6th attempt, Flask-Limiter will trigger an HTTP 429 Too Many Requests response.</p>
+            </div>
+            <div class="guide-step">
+                <span class="step-num">02</span>
+                <h3>Verify Cookie Security</h3>
+                <p>Open Browser DevTools (F12) → Application/Storage → Cookies. Confirm that the <code>session</code> cookie has <strong>HttpOnly</strong> and <strong>SameSite=Lax</strong> checked.</p>
+            </div>
+            <div class="guide-step">
+                <span class="step-num">03</span>
+                <h3>Test Logout Invalidation</h3>
+                <p>Log in, click Logout, and then click the browser's Back button. The browser will not show cached dashboard content due to <code>no-store</code> headers.</p>
+            </div>
+            <div class="guide-step">
+                <span class="step-num">04</span>
+                <h3>Run Automated Tests</h3>
+                <p>Execute <code>pytest tests/test_auth.py -v</code> in VS Code terminal to run the full automated verification suite covering all 12 security requirements.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

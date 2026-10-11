@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}Create Secure Account - SecureAuth Lab{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-card glass-panel auth-card-wide">
+        <div class="auth-header">
+            <div class="security-chip chip-green">
+                <span class="chip-dot"></span>
+                <span class="chip-text">ACCOUNT ENROLLMENT</span>
+            </div>
+            <h1 class="auth-title">Create Protected Account</h1>
+            <p class="auth-subtitle">All credentials are cryptographic hashes using Argon2id with 64 MiB memory hardness</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('register') }}" class="auth-form" id="registerForm" novalidate>
+            <!-- CSRF Protection Token -->
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-grid">
+                <!-- Full Name -->
+                <div class="form-group">
+                    <label for="name" class="form-label">
+                        <span>Full Name</span>
+                        <span class="label-hint">Letters & spaces (2-60 chars)</span>
+                    </label>
+                    <div class="input-wrapper">
+                        <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        <input 
+                            type="text" 
+                            id="name" 
+                            name="name" 
+                            class="form-control {% if field_errors and field_errors.get('name') %}input-error{% endif %}" 
+                            placeholder="Alex Morgan" 
+                            value="{{ name_val or '' }}" 
+                            required 
+                            autocomplete="name"
+                            autofocus
+                        >
+                    </div>
+                    {% if field_errors and field_errors.get('name') %}
+                        <div class="field-error-msg">{{ field_errors.get('name') }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Email Address -->
+                <div class="form-group">
+                    <label for="email" class="form-label">
+                        <span>Email Address</span>
+                        <span class="label-hint">Normalized to lowercase</span>
+                    </label>
+                    <div class="input-wrapper">
+                        <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                            <polyline points="22,6 12,13 2,6"></polyline>
+                        </svg>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            name="email" 
+                            class="form-control {% if field_errors and field_errors.get('email') %}input-error{% endif %}" 
+                            placeholder="alex@security-lab.local" 
+                            value="{{ email_val or '' }}" 
+                            required 
+                            autocomplete="email"
+                        >
+                    </div>
+                    {% if field_errors and field_errors.get('email') %}
+                        <div class="field-error-msg">{{ field_errors.get('email') }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Password Input -->
+            <div class="form-group">
+                <label for="password" class="form-label">
+                    <span>Master Password</span>
+                    <span class="label-hint">Minimum 8 characters with complexity</span>
+                </label>
+                <div class="input-wrapper">
+                    <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        class="form-control password-field {% if field_errors and field_errors.get('password') %}input-error{% endif %}" 
+                        placeholder="Create strong password..." 
+                        required 
+                        autocomplete="new-password"
+                    >
+                    <button 
+                        type="button" 
+                        class="password-toggle-btn" 
+                        aria-label="Toggle password visibility" 
+                        data-target="password"
+                    >
+                        <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        <svg class="eye-off-icon hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                            <line x1="1" y1="1" x2="23" y2="23"></line>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Interactive Password Strength Meter -->
+                <div class="strength-meter-container">
+                    <div class="meter-bar-track">
+                        <div class="meter-bar-fill" id="meterFill" style="width: 0%;"></div>
+                    </div>
+                    <div class="meter-feedback">
+                        <span class="meter-label">Entropy Score:</span>
+                        <span class="meter-status" id="meterStatus">Enter password</span>
+                    </div>
+                </div>
+
+                {% if field_errors and field_errors.get('password') %}
+                    <div class="field-error-msg">{{ field_errors.get('password') }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Confirm Password Input -->
+            <div class="form-group">
+                <label for="confirm_password" class="form-label">
+                    <span>Confirm Master Password</span>
+                </label>
+                <div class="input-wrapper">
+                    <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                    <input 
+                        type="password" 
+                        id="confirm_password" 
+                        name="confirm_password" 
+                        class="form-control password-field {% if field_errors and field_errors.get('confirm_password') %}input-error{% endif %}" 
+                        placeholder="Re-enter password..." 
+                        required 
+                        autocomplete="new-password"
+                    >
+                    <button 
+                        type="button" 
+                        class="password-toggle-btn" 
+                        aria-label="Toggle password visibility" 
+                        data-target="confirm_password"
+                    >
+                        <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        <svg class="eye-off-icon hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                            <line x1="1" y1="1" x2="23" y2="23"></line>
+                        </svg>
+                    </button>
+                </div>
+                {% if field_errors and field_errors.get('confirm_password') %}
+                    <div class="field-error-msg">{{ field_errors.get('confirm_password') }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Password Requirements Live Checklist -->
+            <div class="checklist-panel">
+                <span class="checklist-title">Password Complexity Policy (Enforced on Server):</span>
+                <ul class="checklist-items" id="passwordChecklist">
+                    <li class="check-item" id="chkLength">
+                        <span class="check-icon">✕</span>
+                        <span>At least 8 characters in length</span>
+                    </li>
+                    <li class="check-item" id="chkUpper">
+                        <span class="check-icon">✕</span>
+                        <span>At least one uppercase letter (A-Z)</span>
+                    </li>
+                    <li class="check-item" id="chkLower">
+                        <span class="check-icon">✕</span>
+                        <span>At least one lowercase letter (a-z)</span>
+                    </li>
+                    <li class="check-item" id="chkDigit">
+                        <span class="check-icon">✕</span>
+                        <span>At least one number (0-9)</span>
+                    </li>
+                    <li class="check-item" id="chkSpecial">
+                        <span class="check-icon">✕</span>
+                        <span>At least one special character (!@#$%^&*)</span>
+                    </li>
+                    <li class="check-item" id="chkMatch">
+                        <span class="check-icon">✕</span>
+                        <span>Passwords match identically</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn btn-primary btn-block" id="registerSubmitBtn">
+                <span class="btn-text">Register Secure Account</span>
+                <span class="spinner hidden" aria-hidden="true"></span>
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            <p>Already registered? <a href="{{ url_for('login') }}" class="link-accent">Sign in to your account</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
